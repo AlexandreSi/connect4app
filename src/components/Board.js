@@ -108,7 +108,10 @@ class Board extends React.Component<*, State> {
       } else {
         game.playChip(this.state.playerIdToPlay, columnIndex);
         this.switchPlayer();
-        this.setState({ board: game.getBoardTransposed() });
+        this.setState(
+          { board: game.getBoardTransposed() },
+          () => this.onColumnEnter(columnIndex)
+        );
         this.checkForWinner();
       }
     } catch (error) {
