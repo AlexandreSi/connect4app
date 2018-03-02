@@ -53,14 +53,17 @@ class Game {
     return lineIndexToReplace;
   }
 
-  playChip(playerId: number, columnIndex: number): void {
+  playChip(playerId: number, columnIndex: number): boolean {
     const column = this.getColumn(columnIndex);
     const lineIndexToReplace = this.getLowestEmptyLine(column);
+    let playAgain;
     if (lineIndexToReplace !== null && lineIndexToReplace !== undefined) {
       this.board[lineIndexToReplace][columnIndex] = playerId;
+      playAgain = false;
     } else {
-      throw Error('Column is full');
+      playAgain = true;
     }
+    return playAgain;
   }
 
   static checkForWinInArray(array: Array<number>): number {
@@ -169,7 +172,27 @@ class Game {
       const winIndicator = Game.checkForWinInArray(arrays[arrayIndex]);
       if (winIndicator !== 0) return winIndicator;
     }
-    return 0;
+
+    return this.isBoardFull() ? -1 : 0;
+  }
+
+  get1DArrayFormatted(playerId: number): Array<number> {
+    return this.board.reduce((array, line) => array.concat(
+      line.map((cellValue) => {
+        if (cellValue === 0) return 0;
+        else if (cellValue === playerId) return 1;
+        return -1;
+      })
+    ), []);
+  }
+
+  isBoardFull(): boolean {
+    for (let lineIndex = 0; lineIndex < this.height; lineIndex++) {
+      if (this.board[lineIndex].indexOf(0) >= 0) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 

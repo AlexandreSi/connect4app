@@ -6,6 +6,9 @@ import DisplayMessage from './DisplayMessage';
 import Game from '../util/Game';
 import getLowestEmptyCellIndex from '../services/Array.service';
 import appStyle from '../config/appStyle';
+import networkWeights from '../networkWeights.json';
+import { randomChoice } from '../util/Helper';
+const synaptic = require('synaptic');
 
 const styles = {
   boardContainer: {
@@ -47,6 +50,7 @@ type State = {
   playerIdToPlay: number,
   game: Game,
   message: string,
+  bot: any,
 }
 
 class Board extends React.Component<*, State> {
@@ -63,16 +67,60 @@ class Board extends React.Component<*, State> {
     playerIdToPlay: 1,
     game: new Game(),
     message: '',
+    bot: null,
   };
 
   componentDidMount() {
     const { game } = this.state;
     this.setState({ board: game.getBoardTransposed() });
+    const bot = new synaptic.Network.fromJSON(networkWeights);
+    this.setState({ bot });
   }
 
-  switchPlayer = (): void => {
-    if (this.state.playerIdToPlay === 1) this.setState({ playerIdToPlay: 2 });
-    if (this.state.playerIdToPlay === 2) this.setState({ playerIdToPlay: 1 });
+  switchPlayer = async (): Promise<void> => {
+    if (this.state.playerIdToPlay === 1) {
+      await this.setState({ playerIdToPlay: 2 }, () => {
+        if (this.checkForWinner() !== 0) this.makeAIPlay();
+      });
+    }
+    if (this.state.playerIdToPlay === 2) await this.setState({ playerIdToPlay: 1 });
+  }
+
+  makeAIPlay = async (): Promise<void> => {
+    const { game, bot } = this.state;
+    const output = !!bot && bot.activate(game.get1DArrayFormatted(this.state.playerIdToPlay));
+    let columnIndexToPlay;
+    if (!!output) {
+      columnIndexToPlay = output.indexOf(Math.max(...output));
+      let playAgain = game.playChip(this.state.playerIdToPlay, columnIndexToPlay);
+      if (!playAgain) {
+        await this.switchPlayer();
+        this.setState(
+          { board: game.getBoardTransposed() },
+        );
+        this.checkForWinner();
+        this.checkIfBoardFull();
+      } else {
+        while (playAgain) {
+          let randomColumn = randomChoice([0, 1, 2, 3, 4, 5, 6]);
+          playAgain = game.playChip(this.state.playerIdToPlay, randomColumn);
+        }
+        await this.switchPlayer();
+        this.setState(
+          { board: game.getBoardTransposed() },
+        );
+        this.checkForWinner();
+        this.checkIfBoardFull();
+      }
+    }
+  }
+
+  checkIfBoardFull = (): void => {
+    const { game } = this.state;
+    const isBoardFull = game.isBoardFull();
+    if (isBoardFull) {
+      this.setState({ message: 'Match nul !' });
+    }
   }
 
   checkForWinner = (): void => {
@@ -95,7 +143,7 @@ class Board extends React.Component<*, State> {
   onColumnClick = (columnIndex: number): void => {
     const { game } = this.state;
     try {
-      if (!!this.state.message && !!game.checkForWin()) {
+      if (!!this.state.message && (game.checkForWin() > 0 || game.isBoardFull())) {
         const newGame = new Game();
         this.setState({
           message: '',
@@ -113,6 +161,7 @@ class Board extends React.Component<*, State> {
           () => this.onColumnEnter(columnIndex)
         );
         this.checkForWinner();
+        this.checkIfBoardFull();
       }
     } catch (error) {
       this.setState({ message: 'Cette colonne est pleine !' });
