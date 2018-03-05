@@ -78,9 +78,10 @@ class Board extends React.Component<*, State> {
   }
 
   switchPlayer = async (): Promise<void> => {
+    const { game } = this.state;
     if (this.state.playerIdToPlay === 1) {
       await this.setState({ playerIdToPlay: 2 }, () => {
-        if (this.checkForWinner() !== 0) this.makeAIPlay();
+        if (game.checkForWin() === 0) this.makeAIPlay();
       });
     }
     if (this.state.playerIdToPlay === 2) await this.setState({ playerIdToPlay: 1 });
@@ -155,12 +156,12 @@ class Board extends React.Component<*, State> {
         this.setState({ message: '' });
       } else {
         game.playChip(this.state.playerIdToPlay, columnIndex);
-        this.switchPlayer();
         this.setState(
           { board: game.getBoardTransposed() },
           () => this.onColumnEnter(columnIndex)
         );
         this.checkForWinner();
+        this.switchPlayer();
         this.checkIfBoardFull();
       }
     } catch (error) {
