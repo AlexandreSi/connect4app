@@ -2,6 +2,7 @@
 import React from 'react';
 
 import Column from './Column';
+import ScoreDisplay from './Score';
 import DisplayMessage from './DisplayMessage';
 import Game from '../util/Game';
 import getLowestEmptyCellIndex from '../services/Array.service';
@@ -30,6 +31,8 @@ const styles = {
     height: 60,
     width: 560,
     backgroundColor: appStyle.colors.white,
+    display: 'flex',
+    justifyContent: 'center',
   },
   underBoardFoot: {
     height: 60,
@@ -49,6 +52,8 @@ type State = {
   board: Array<Array<number>>,
   playerIdToPlay: number,
   game: Game,
+  gamesWon: number,
+  gamesPlayed: number,
   message: string,
   bot: any,
 }
@@ -66,6 +71,8 @@ class Board extends React.Component<*, State> {
     ],
     playerIdToPlay: 1,
     game: new Game(),
+    gamesWon: 0,
+    gamesPlayed: 0,
     message: '',
     bot: null,
   };
@@ -127,8 +134,22 @@ class Board extends React.Component<*, State> {
   checkForWinner = (): void => {
     const { game } = this.state;
     const winner = game.checkForWin();
-    if (!!winner) {
-      this.setState({ message: `Le joueur ${winner} a gagné !` });
+    if (winner === 1) {
+      this.setState({
+        message: `Vous avez gagné :) Cliquez pour rejouer !`,
+        gamesWon: this.state.gamesWon + 1,
+        gamesPlayed: this.state.gamesPlayed + 1,
+      });
+    } else if (winner === 2) {
+      this.setState({
+        message: `La machine a gagné :( Cliquez pour rejouer !`,
+        gamesPlayed: this.state.gamesPlayed + 1,
+      });
+    } else if (winner === -1) {
+      this.setState({
+        message: `Match nul ! Cliquez pour rejouer !`,
+        gamesPlayed: this.state.gamesPlayed + 1,
+      });
     }
   }
 
@@ -200,7 +221,12 @@ class Board extends React.Component<*, State> {
         </div>
         <div style={styles.footer}>
           <div style={styles.underBoardFoot} />
-          <div style={styles.underBoard} />
+          <div style={styles.underBoard}>
+            <ScoreDisplay
+              gamesWon={this.state.gamesWon}
+              gamesPlayed={this.state.gamesPlayed}
+            />
+          </div>
           <div style={styles.underBoardFoot} />
         </div>
       </div>
