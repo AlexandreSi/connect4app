@@ -2,14 +2,17 @@
 import React from 'react';
 
 import Column from './Column';
+import BotChoice from './BotChoice';
 import ScoreDisplay from './Score';
 import DisplayMessage from './DisplayMessage';
 import Game from '../util/Game';
 import getLowestEmptyCellIndex from '../services/Array.service';
 import appStyle from '../config/appStyle';
 import networkWeights from '../networkWeights.json';
+import networkWeightsCNN from '../networkWeightsCNN.json';
 import { randomChoice } from '../util/Helper';
 const synaptic = require('synaptic');
+const convnetjs = require('convnetjs');
 
 const styles = {
   boardContainer: {
@@ -50,6 +53,7 @@ const styles = {
 
 type State = {
   board: Array<Array<number>>,
+  botType: string,
   playerIdToPlay: number,
   game: Game,
   gamesWon: number,
@@ -69,6 +73,7 @@ class Board extends React.Component<*, State> {
       [0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0],
     ],
+    botType: 'CNN',
     playerIdToPlay: 1,
     game: new Game(),
     gamesWon: 0,
@@ -80,7 +85,20 @@ class Board extends React.Component<*, State> {
   componentDidMount() {
     const { game } = this.state;
     this.setState({ board: game.getBoardTransposed() });
-    const bot = new synaptic.Network.fromJSON(networkWeights);
+    this.changeBot();
+  }
+
+  changeBot = () => {
+    const { botType } = this.state;
+    console.log(botType)
+    let bot;
+    if (botType === 'CNN') {
+      const network = new convnetjs.Net();
+      network.fromJSON(networkWeightsCNN);
+      bot = network;
+    } else {
+      bot = synaptic.Network.fromJSON(networkWeights);
+    }
     this.setState({ bot });
   }
 
@@ -95,8 +113,13 @@ class Board extends React.Component<*, State> {
   }
 
   makeAIPlay = async (): Promise<void> => {
-    const { game, bot } = this.state;
-    const output = !!bot && bot.activate(game.get1DArrayFormatted(this.state.playerIdToPlay));
+    const { game, bot, botType } = this.state;
+    let output;
+    if (botType === 'CNN') {
+      output = !!bot && bot.forward(game.getConvolutionnalVol(this.state.playerIdToPlay)).w;
+    } else {
+      output = !!bot && bot.activate(game.get1DArrayFormatted(this.state.playerIdToPlay));
+    }
     let columnIndexToPlay;
     if (!!output) {
       columnIndexToPlay = output.indexOf(Math.max(...output));
@@ -190,6 +213,18 @@ class Board extends React.Component<*, State> {
     }
   }
 
+  changeBotType = async (): Promise<void> => {
+    const newGame = new Game();
+    await this.setState({
+      botType: this.state.botType === 'NN' ? 'CNN' : 'NN',
+      message: '',
+      game: newGame,
+      board: newGame.getBoardTransposed(),
+      playerIdToPlay: 1,
+    })
+    this.changeBot();
+  }
+
   onColumnLeave = (columnIndex: number): void => {
     const boardToDisplay = this.state.board;
     boardToDisplay[columnIndex] = boardToDisplay[columnIndex].reduce((columnAccumulator, cell) => {
@@ -203,6 +238,10 @@ class Board extends React.Component<*, State> {
     const { message } = this.state;
     return (
       <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <BotChoice
+          botType={this.state.botType}
+          onChangeChoice={this.changeBotType}
+        />
         <div style={styles.boardContainer}>
           <DisplayMessage message={message}/>
           <div style={styles.boardFoot} />
