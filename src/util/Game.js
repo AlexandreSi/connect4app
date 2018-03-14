@@ -219,6 +219,26 @@ class Game {
     }
     return vol;
   }
+
+  display(): void {
+    const mapPlayerToCharacter = {};
+    mapPlayerToCharacter[0] = '-';
+    mapPlayerToCharacter[1] = 'X';
+    mapPlayerToCharacter[2] = 'O';
+
+    // eslint-disable-next-line
+    console.log(
+      this.board.reduce((boardString, line, index) => {
+        const completeLineString = line.reduce((lineString, cell) => {
+          const lineStringAppended = lineString.concat(` ${mapPlayerToCharacter[cell]} `);
+          return lineStringAppended;
+        }, '');
+        let boardStringAppended = boardString.concat(completeLineString);
+        if (index !== boardStringAppended.length - 1) boardStringAppended += '\n';
+        return boardStringAppended;
+      }, '')
+    )
+  }
 }
 
 export default Game;
